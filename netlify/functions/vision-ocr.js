@@ -52,10 +52,21 @@ exports.handler = async (event) => {
 
     const text = data?.responses?.[0]?.fullTextAnnotation?.text || '';
 
+    // textAnnotations[0] is the full block of text (same as fullTextAnnotation.text);
+    // everything after that is one entry per detected word, each with its own
+    // bounding box. We pass these along so the front-end can tell which words
+    // are printed in the biggest font — on real packaging that's almost always
+    // the product name, regardless of how much other (smaller) text surrounds it.
+    const rawAnnotations = data?.responses?.[0]?.textAnnotations || [];
+    const words = rawAnnotations.slice(1).map((w) => ({
+      text: w.description,
+      vertices: w.boundingPoly?.vertices || []
+    }));
+
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text })
+      body: JSON.stringify({ text, words })
     };
   } catch (err) {
     return { statusCode: 500, body: JSON.stringify({ error: err.message || 'Unknown server error' }) };

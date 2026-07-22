@@ -1013,8 +1013,8 @@
     if (USE_CLOUD_VISION && isOnline) {
       try {
         setScanStatus('Reading label… asking Cloud Vision…');
-        const text = await runCloudVisionOCR(rawCanvas);
-        const finalGuess = extractBestGuess(text);
+        const { text, words } = await runCloudVisionOCR(rawCanvas);
+        const finalGuess = extractBestGuessFromWords(words, text);
 
         if (finalGuess) {
           if (activeNameInput) activeNameInput.value = finalGuess;
@@ -1093,11 +1093,77 @@
       throw new Error(errBody.error || `Cloud Vision request failed (${res.status})`);
     }
 
-    const { text } = await res.json();
-    return text || '';
+    const { text, words } = await res.json();
+    return { text: text || '', words: words || [] };
   }
 
   // Picks the most plausible product-name line and weight pattern out of raw OCR text.
+  // Cloud Vision gives us a bounding box for every individual word, which means
+  // we know roughly how big each word's font is. On real packaging, the product
+  // name is almost always printed in the largest text on the label — much more
+  // reliable than "longest line," which just as easily grabs a slogan or the
+  // start of an ingredients list. This groups the largest-font words back into
+  // reading order and uses that as the name guess.
+  function extractBestGuessFromWords(words, fullText) {
+    if (!words || !words.length) {
+      // No word-box data (e.g. unexpected response shape) — fall back to the
+      // simpler text-only heuristic.
+      return extractBestGuess(fullText || '');
+    }
+
+    const weightMatch = (fullText || '').match(/(\d+(\.\d+)?)\s?(g|grams|kg|ml|l)\b/i);
+    const weightText = weightMatch ? `${weightMatch[1]}${weightMatch[3].toLowerCase()}` : '';
+
+    // Compute a height + vertical/horizontal center for each usable word.
+    const measured = words
+      .filter(w => w.text && /[a-zA-Z]/.test(w.text) && w.vertices && w.vertices.length >= 2)
+      .map(w => {
+        const ys = w.vertices.map(v => v.y || 0);
+        const xs = w.vertices.map(v => v.x || 0);
+        const height = Math.max(...ys) - Math.min(...ys);
+        const yCenter = (Math.max(...ys) + Math.min(...ys)) / 2;
+        const xCenter = (Math.max(...xs) + Math.min(...xs)) / 2;
+        return { text: w.text, height, yCenter, xCenter };
+      })
+      .filter(w => w.height > 0);
+
+    if (!measured.length) {
+      return extractBestGuess(fullText || '');
+    }
+
+    const maxHeight = Math.max(...measured.map(w => w.height));
+    // Keep words close to the largest font size on the label — this is
+    // usually the brand/product name, sometimes spanning 2-3 words or lines.
+    const bigWords = measured.filter(w => w.height >= maxHeight * 0.7);
+
+    // Group big words into lines by vertical position (words on the same
+    // printed line will have similar yCenter), then order each line left-to-right.
+    const avgHeight = bigWords.reduce((sum, w) => sum + w.height, 0) / bigWords.length;
+    const lineTolerance = avgHeight * 0.6;
+
+    const lines = [];
+    bigWords
+      .sort((a, b) => a.yCenter - b.yCenter)
+      .forEach(w => {
+        let line = lines.find(l => Math.abs(l.yCenter - w.yCenter) <= lineTolerance);
+        if (!line) {
+          line = { yCenter: w.yCenter, words: [] };
+          lines.push(line);
+        }
+        line.words.push(w);
+      });
+
+    const nameGuess = lines
+      .map(line => line.words.sort((a, b) => a.xCenter - b.xCenter).map(w => w.text).join(' '))
+      .join(' ')
+      .trim();
+
+    if (nameGuess && weightText) return `${nameGuess} ${weightText}`;
+    if (nameGuess) return nameGuess;
+    if (weightText) return weightText;
+    return extractBestGuess(fullText || '');
+  }
+
   function extractBestGuess(text) {
     // Weight pattern: "60g", "60 g", "1.5kg", "500ml", "1L", etc.
     const weightMatch = text.match(/(\d+(\.\d+)?)\s?(g|grams|kg|ml|l)\b/i);
