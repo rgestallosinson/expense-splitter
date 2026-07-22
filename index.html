@@ -1,0 +1,1633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Expense Splitter v1.5</title>
+<style>
+  :root{
+    --bg: #f4f5fb;
+    --card: #ffffff;
+    --card-2: #f0f1f8;
+    --border: #dde0ee;
+    --text: #1c1f2e;
+    --muted: #6b7094;
+    --accent: #4b6bde;
+    --accent-2: #7c4bde;
+    --good: #1fa976;
+    --bad: #e0454c;
+    --warn: #c47f0d;
+    --radius: 14px;
+  }
+  *{ box-sizing: border-box; }
+  body{
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: radial-gradient(1200px 800px at 10% -10%, #e8ebfb 0%, var(--bg) 60%);
+    color: var(--text);
+    padding: 24px 16px 60px;
+    min-height: 100vh;
+  }
+  .wrap{
+    max-width: 880px;
+    margin: 0 auto;
+  }
+  header{
+    text-align: center;
+    margin-bottom: 28px;
+  }
+  header h1{
+    font-size: 1.6rem;
+    margin: 0 0 6px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  header p{
+    color: var(--muted);
+    margin: 0;
+    font-size: 0.9rem;
+  }
+  .card{
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 16px rgba(30,40,90,0.08);
+  }
+  .card h2{
+    margin: 0 0 16px;
+    font-size: 1.05rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card h2 .badge{
+    background: var(--accent);
+    color: #0b0d17;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 999px;
+  }
+  label{
+    display: block;
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-bottom: 6px;
+    margin-top: 14px;
+  }
+  label:first-of-type{ margin-top: 0; }
+  input[type="text"], input[type="number"]{
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--card-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color .15s ease;
+  }
+  input[type="text"]:focus, input[type="number"]:focus{
+    border-color: var(--accent);
+  }
+  .stepper{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .stepper button{
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--card-2);
+    color: var(--text);
+    font-size: 1.1rem;
+    cursor: pointer;
+  }
+  .stepper button:hover{ border-color: var(--accent); }
+  .stepper input{
+    text-align: center;
+    max-width: 90px;
+  }
+  .row{
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .row > div{ flex: 1; min-width: 140px; }
+  .btn{
+    appearance: none;
+    border: none;
+    border-radius: 10px;
+    padding: 11px 18px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform .08s ease, opacity .15s ease;
+  }
+  .btn:active{ transform: scale(0.97); }
+  .btn-primary{ background: linear-gradient(90deg, var(--accent), var(--accent-2)); color: #0b0d17; }
+  .btn-secondary{ background: var(--card-2); color: var(--text); border: 1px solid var(--border); }
+  .btn-danger{ background: rgba(255,107,107,0.15); color: var(--bad); border: 1px solid rgba(255,107,107,0.35); }
+  .btn-warn{ background: rgba(255,184,77,0.15); color: var(--warn); border: 1px solid rgba(255,184,77,0.35); }
+  .btn-sm{ padding: 6px 10px; font-size: 0.78rem; border-radius: 8px; }
+  .btn-row{ display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+
+  .empty-list-msg{
+    text-align: center;
+    color: var(--muted);
+    padding: 24px;
+    font-style: italic;
+    margin: 0;
+  }
+
+  /* Grouped item list — one header per unique payer/group, items listed compactly underneath */
+  .person-group{
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-top: 12px;
+    overflow: hidden;
+  }
+  .person-group:first-child{ margin-top: 6px; }
+  .person-group-header{
+    background: var(--card-2);
+    padding: 10px 14px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+  }
+  .person-group-header .group-total{
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .person-item-row{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    gap: 10px;
+  }
+  .person-item-row:last-child{ border-bottom: none; }
+  .person-item-info{
+    flex: 1;
+    min-width: 0;
+  }
+  .person-item-info .item-name{
+    font-weight: 600;
+    font-size: 0.9rem;
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .person-item-info .item-price{
+    color: var(--muted);
+    font-size: 0.8rem;
+  }
+  .person-item-actions{
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  .person-item-actions button{
+    padding: 5px 8px;
+    font-size: 0.7rem;
+    border-radius: 6px;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 640px){
+    body{ padding: 16px 10px 60px; }
+    .card{ padding: 16px; }
+    header h1{ font-size: 1.35rem; }
+    .row{ flex-direction: column; }
+    .row > div{ min-width: 100%; }
+    .split-type label{ min-width: 100%; }
+    .person-group-header{ font-size: 0.76rem; padding: 8px 10px; }
+    .person-item-row{ padding: 8px 10px; flex-wrap: wrap; }
+    .person-item-actions{ width: 100%; justify-content: flex-end; }
+    .owed-item{ flex-direction: column; align-items: flex-start; gap: 8px; }
+    .owed-item .amount{ align-self: flex-end; }
+    .summary{ grid-template-columns: 1fr 1fr; }
+  }
+
+  @media (max-width: 380px){
+    .summary{ grid-template-columns: 1fr; }
+  }
+
+  .split-type{
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+  }
+  .split-type label{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    padding: 10px 14px;
+    background: var(--card-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 0.88rem;
+    color: var(--text);
+    flex: 1;
+    min-width: 180px;
+  }
+  .split-type input[type="radio"]{
+    accent-color: var(--accent);
+    width: 16px;
+    height: 16px;
+  }
+  .split-form{
+    display: none;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px dashed var(--border);
+  }
+  .split-form.active{ display: block; }
+
+  .summary{
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin-top: 8px;
+  }
+  .summary .stat{
+    background: var(--card-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+  }
+  .summary .stat .label{
+    font-size: 0.72rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin: 0 0 4px;
+  }
+  .summary .stat .value{
+    font-size: 1.3rem;
+    font-weight: 700;
+  }
+  .summary .stat.remainder .value{ color: var(--warn); }
+  .summary .stat.good .value{ color: var(--good); }
+
+  .owed-list{
+    margin-top: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .owed-item{
+    background: var(--card-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.92rem;
+  }
+  .owed-item .breakdown{
+    color: var(--muted);
+    font-size: 0.76rem;
+    display: block;
+    margin-top: 2px;
+  }
+  .owed-item .amount{
+    font-weight: 700;
+    color: var(--good);
+    font-size: 1.05rem;
+  }
+  .owed-item.payer .amount{ color: var(--accent); }
+
+  .error-msg{
+    background: rgba(255,107,107,0.12);
+    border: 1px solid rgba(255,107,107,0.35);
+    color: var(--bad);
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    margin-top: 14px;
+    display: none;
+  }
+  .error-msg.show{ display: block; }
+
+  .hint{
+    font-size: 0.76rem;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+
+  .item-row{
+    background: var(--card-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    margin-top: 10px;
+  }
+  .item-row:first-child{ margin-top: 8px; }
+  .item-row .row-remove-btn{
+    margin-top: 8px;
+    width: 100%;
+  }
+
+  body.equal-mode .for-column{ display: none; }
+  body.equal-mode #itemForGroup{ display: none; }
+  body.equal-mode .person-group-header{ justify-content: flex-end; }
+
+  .empty-list-msg{
+    text-align: center;
+    color: var(--muted);
+    padding: 24px;
+    font-style: italic;
+    margin: 0;
+  }
+
+  .person-group-card{
+    background: var(--card-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 12px;
+  }
+  .person-group-card:last-child{ margin-bottom: 0; }
+
+  .person-group-header{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 10px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .person-group-name{
+    font-weight: 700;
+    font-size: 0.92rem;
+    color: var(--text);
+  }
+  .person-group-total{
+    font-weight: 700;
+    font-size: 0.92rem;
+    color: var(--accent);
+  }
+
+  .person-group-lines{
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .person-group-line{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+  }
+  .person-group-line:not(:last-child){
+    border-bottom: 1px dashed var(--border);
+  }
+  .line-info{
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+  .line-name{
+    font-size: 0.86rem;
+    color: var(--text);
+  }
+  .line-price{
+    font-size: 0.76rem;
+    color: var(--muted);
+  }
+  .line-actions{
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  .icon-btn{
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all .12s ease;
+    padding: 0;
+  }
+  .icon-btn:hover{ border-color: var(--accent); color: var(--accent); }
+  .icon-btn.delete-btn:hover{ border-color: var(--bad); color: var(--bad); background: rgba(224,69,76,0.08); }
+
+  .v-tag{
+    display: inline-block;
+    font-size: 0.65rem;
+    background: rgba(155,108,255,0.15);
+    color: var(--accent-2);
+    padding: 2px 7px;
+    border-radius: 999px;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-5px; margin-right:6px;"><rect x="2" y="6" width="20" height="14" rx="2"/><path d="M2 10h20"/><circle cx="16" cy="14" r="1.5" fill="currentColor" stroke="none"/><path d="M6 6V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1"/></svg>Expense Splitter</h1>
+    <p>v1 Equal Pay + v1.5 Pay-What-You-Ordered — split fairly, no manual math.</p>
+  </header>
+
+  <!-- CARD 1: ADD ITEM -->
+  <div class="card">
+    <h2><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h9l3 3v17l-2-1-2 1-2-1-2 1-2-1-2 1V2z"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="12" y2="16"/></svg>Add Item</h2>
+
+    <div id="itemForGroup">
+      <label for="itemFor">Who pays for these items? <span class="hint" style="margin:0;">(type one name, several names separated by commas to split just between them, or "all" to split among everyone)</span></label>
+      <input type="text" id="itemFor" placeholder='e.g. RG, or "RG, Ragie", or "all"'>
+    </div>
+
+    <label style="margin-top:16px;">Items <span class="hint" style="margin:0;">(add as many as you like for the person/group above, then Save All)</span></label>
+    <div id="itemRowsContainer">
+      <!-- Row template (first row) -->
+      <div class="item-row" data-row-id="row-0">
+        <div style="display:flex; gap:8px;">
+          <input type="text" class="row-item-name" placeholder="Item name, e.g. Chicken Joy Bucket" style="flex:1;">
+          <button type="button" class="btn btn-secondary row-scan-btn" style="white-space:nowrap;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px; margin-right:5px;"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>Scan
+          </button>
+        </div>
+        <input type="number" class="row-item-price" placeholder="Price (₱)" min="0" step="0.01" style="margin-top:8px;">
+      </div>
+    </div>
+    <p class="hint" id="scanSupportHint" style="display:none;"></p>
+
+    <div class="btn-row">
+      <button type="button" class="btn btn-secondary" id="addRowBtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="vertical-align:-3px; margin-right:5px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add Another Item</button>
+      <button class="btn btn-primary" id="addItemBtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="vertical-align:-3px; margin-right:5px;"><polyline points="20 6 9 17 4 12"/></svg>Save All Items</button>
+    </div>
+    <div class="error-msg" id="addItemError"></div>
+  </div>
+
+  <!-- SCANNER MODAL (barcode first, OCR photo fallback) -->
+  <div id="scanModal" style="display:none; position:fixed; inset:0; background:rgba(20,22,40,0.55); z-index:999; align-items:center; justify-content:center; padding:16px;">
+    <div style="background:var(--card); border:1px solid var(--border); border-radius:16px; padding:18px; max-width:480px; width:100%; box-shadow:0 10px 40px rgba(0,0,0,0.25);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h3 style="margin:0; font-size:1rem;">📷 Scan Item</h3>
+        <button type="button" id="closeScanBtn" class="btn btn-secondary btn-sm">Close</button>
+      </div>
+
+      <div id="scanStatus" style="font-size:0.82rem; color:var(--muted); margin-bottom:4px;">Point your camera at the barcode…</div>
+      <div id="ocrModeHint" style="font-size:0.72rem; color:var(--muted); margin-bottom:10px; opacity:0.8;"></div>
+
+
+      <div style="position:relative; background:#000; border-radius:10px; overflow:hidden;">
+        <video id="scanVideo" autoplay playsinline muted style="width:100%; display:block; max-height:340px; object-fit:cover;"></video>
+        <canvas id="scanCanvas" style="display:none;"></canvas>
+      </div>
+
+      <div class="btn-row" style="margin-top:14px;">
+        <button type="button" class="btn btn-primary" id="capturePhotoBtn">📸 Capture Label Photo Instead</button>
+      </div>
+      <p class="hint" style="margin-top:8px;">Tip: if barcode scanning isn't supported on this device/browser, tap "Capture Label Photo Instead" to read the name and grams straight off the packaging. If nothing is detected, you can always just type it in manually.</p>
+    </div>
+  </div>
+
+  <!-- CARD 2: ITEM LIST -->
+  <div class="card">
+    <h2><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>Item List</h2>
+    <div id="itemListContainer">
+      <p class="empty-list-msg">No items yet. Add one above <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></p>
+    </div>
+  </div>
+
+  <!-- CARD 3: SPLIT & CALCULATE -->
+  <div class="card">
+    <h2><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="11" x2="8.01" y2="11"/><line x1="12" y1="11" x2="12.01" y2="11"/><line x1="16" y1="11" x2="16.01" y2="11"/><line x1="8" y1="15" x2="8.01" y2="15"/><line x1="12" y1="15" x2="12.01" y2="15"/><line x1="16" y1="15" x2="16.01" y2="15"/><line x1="8" y1="19" x2="16" y2="19"/></svg>Split and Calculate</h2>
+
+    <label>Split type</label>
+    <div class="split-type">
+      <label>
+        <input type="radio" name="splitType" value="equal" id="radioEqual" checked>
+        Equal Pay <span class="v-tag">v1</span>
+      </label>
+      <label>
+        <input type="radio" name="splitType" value="ordered" id="radioOrdered">
+        Pay what you ordered <span class="v-tag">v1.5</span>
+      </label>
+    </div>
+
+    <!-- ===================== EQUAL PAY FORM (v1 - UNTOUCHED LOGIC) ===================== -->
+    <div class="split-form active" id="equalForm">
+      <label for="numPeople">Number of people</label>
+      <div class="stepper">
+        <button type="button" id="decreasePeople">−</button>
+        <input type="number" id="numPeople" value="4" min="1" max="50" readonly>
+        <button type="button" id="increasePeople">+</button>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" id="calculateEqualBtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px; margin-right:5px;"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="11" x2="8.01" y2="11"/><line x1="12" y1="11" x2="12.01" y2="11"/><line x1="16" y1="11" x2="16.01" y2="11"/><line x1="8" y1="15" x2="8.01" y2="15"/></svg>Calculate Split</button>
+        <button class="btn btn-secondary" id="resetEqualBtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px; margin-right:5px;"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>Reset Everything</button>
+      </div>
+      <div class="error-msg" id="equalError"></div>
+
+      <div class="summary" id="equalSummary" style="display:none; margin-top:20px;">
+        <div class="stat">
+          <p class="label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px; margin-right:4px;"><path d="M6 2h9l3 3v17l-2-1-2 1-2-1-2 1-2-1-2 1V2z"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/></svg>Total Bill</p>
+          <p class="value" id="eqTotalBill">₱0.00</p>
+        </div>
+        <div class="stat">
+          <p class="label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px; margin-right:4px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Number of People</p>
+          <p class="value" id="eqNumPeople">0</p>
+        </div>
+        <div class="stat good">
+          <p class="label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px; margin-right:4px;"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5a2.5 2.5 0 0 1 2.5-1 2.5 2.5 0 0 1 0 5 2.5 2.5 0 0 0 0 5 2.5 2.5 0 0 0 2.5-1"/></svg>Each Person Pays</p>
+          <p class="value" id="eqEachPays">₱0.00</p>
+        </div>
+        <div class="stat remainder">
+          <p class="label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px; margin-right:4px;"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Remainder</p>
+          <p class="value" id="eqRemainder">₱0.00</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== PAY WHAT YOU ORDERED FORM (v1.5 - NEW) ===================== -->
+    <div class="split-form" id="orderedForm">
+      <label for="paidBy">Who paid the total bill?</label>
+      <input type="text" id="paidBy" placeholder="e.g. RG — must match a name in the item list">
+      <p class="hint">This person must already appear in the item list (as an individual payer or within "all"). You can't type "all" here — only one person can be the payer.</p>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" id="calculateOrderedBtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px; margin-right:5px;"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="11" x2="8.01" y2="11"/><line x1="12" y1="11" x2="12.01" y2="11"/><line x1="16" y1="11" x2="16.01" y2="11"/><line x1="8" y1="15" x2="8.01" y2="15"/></svg>Calculate Split</button>
+        <button class="btn btn-secondary" id="resetOrderedBtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px; margin-right:5px;"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>Reset Everything</button>
+      </div>
+      <div class="error-msg" id="orderedError"></div>
+
+      <div class="summary" id="orderedSummary" style="display:none; margin-top:20px;">
+        <div class="stat">
+          <p class="label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px; margin-right:4px;"><path d="M6 2h9l3 3v17l-2-1-2 1-2-1-2 1-2-1-2 1V2z"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/></svg>Total Bill</p>
+          <p class="value" id="ordTotalBill">₱0.00</p>
+        </div>
+        <div class="stat">
+          <p class="label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px; margin-right:4px;"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0 1 14 0v1"/></svg>Paid By</p>
+          <p class="value" id="ordPaidBy">-</p>
+        </div>
+        <div class="stat">
+          <p class="label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px; margin-right:4px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>People Involved</p>
+          <p class="value" id="ordNumPeople">0</p>
+        </div>
+      </div>
+
+      <div class="owed-list" id="owedList"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ============================================================
+  // SHARED STATE
+  // ============================================================
+  // Each item: { id, name, price, forPerson }
+  // forPerson is either a specific name, or the literal string "all" (lowercased)
+  let items = [];
+  let itemIdCounter = 1;
+
+  const itemListContainer = document.getElementById('itemListContainer');
+
+  // ============================================================
+  // AUTO-SAVE / RESTORE (localStorage) — survives tab close, refresh,
+  // accidental app quit. Data persists in this browser until "Reset
+  // Everything" is pressed or browser data is manually cleared.
+  // ============================================================
+  const STORAGE_KEY = 'expenseSplitterState_v1';
+
+  function saveState() {
+    try {
+      const state = {
+        items: items,
+        itemIdCounter: itemIdCounter,
+        splitType: document.querySelector('input[name="splitType"]:checked')?.value || 'equal',
+        numPeople: document.getElementById('numPeople')?.value || '4',
+        paidBy: document.getElementById('paidBy')?.value || ''
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (err) {
+      // localStorage can fail (private browsing, storage full, etc.) —
+      // fail silently since auto-save is a convenience, not core functionality.
+    }
+  }
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const state = JSON.parse(raw);
+
+      if (Array.isArray(state.items)) items = state.items;
+      if (typeof state.itemIdCounter === 'number') itemIdCounter = state.itemIdCounter;
+
+      if (state.splitType === 'ordered') {
+        const radioOrderedEl = document.getElementById('radioOrdered');
+        if (radioOrderedEl) {
+          radioOrderedEl.checked = true;
+          radioOrderedEl.dispatchEvent(new Event('change'));
+        }
+      }
+
+      const numPeopleEl = document.getElementById('numPeople');
+      if (numPeopleEl && state.numPeople) numPeopleEl.value = state.numPeople;
+
+      const paidByEl = document.getElementById('paidBy');
+      if (paidByEl && state.paidBy) paidByEl.value = state.paidBy;
+    } catch (err) {
+      // Corrupted or unreadable saved state — start fresh rather than crash.
+    }
+  }
+
+  // ============================================================
+  // CARD 1: ADD ITEM
+  // ============================================================
+  const itemForInput = document.getElementById('itemFor');
+  const addItemBtn = document.getElementById('addItemBtn');
+  const addRowBtn = document.getElementById('addRowBtn');
+  const itemRowsContainer = document.getElementById('itemRowsContainer');
+  const addItemError = document.getElementById('addItemError');
+
+  let rowIdCounter = 1; // row-0 already exists in the initial HTML
+
+  function showError(el, msg) {
+    el.textContent = msg;
+    el.classList.add('show');
+  }
+  function clearError(el) {
+    el.textContent = '';
+    el.classList.remove('show');
+  }
+
+  function createItemRow() {
+    const rowId = `row-${rowIdCounter++}`;
+    const row = document.createElement('div');
+    row.className = 'item-row';
+    row.dataset.rowId = rowId;
+    row.innerHTML = `
+      <div style="display:flex; gap:8px;">
+        <input type="text" class="row-item-name" placeholder="Item name, e.g. Chicken Joy Bucket" style="flex:1;">
+        <button type="button" class="btn btn-secondary row-scan-btn" style="white-space:nowrap;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px; margin-right:5px;"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>Scan
+        </button>
+      </div>
+      <input type="number" class="row-item-price" placeholder="Price (₱)" min="0" step="0.01" style="margin-top:8px;">
+      <button type="button" class="btn btn-danger btn-sm row-remove-btn">Remove This Item</button>
+    `;
+    itemRowsContainer.appendChild(row);
+    wireRowEvents(row);
+    return row;
+  }
+
+  function wireRowEvents(row) {
+    const scanBtn = row.querySelector('.row-scan-btn');
+    const removeBtn = row.querySelector('.row-remove-btn');
+    if (scanBtn) {
+      scanBtn.addEventListener('click', () => openScanModal(row.querySelector('.row-item-name')));
+    }
+    if (removeBtn) {
+      removeBtn.addEventListener('click', () => {
+        // Never remove the very last remaining row — always keep at least one for entry
+        if (itemRowsContainer.querySelectorAll('.item-row').length > 1) {
+          row.remove();
+        } else {
+          row.querySelector('.row-item-name').value = '';
+          row.querySelector('.row-item-price').value = '';
+        }
+      });
+    }
+  }
+
+  // Wire up the initial row (row-0) that's already in the HTML
+  wireRowEvents(itemRowsContainer.querySelector('.item-row'));
+
+  addRowBtn.addEventListener('click', () => {
+    const newRow = createItemRow();
+    newRow.querySelector('.row-item-name').focus();
+  });
+
+  addItemBtn.addEventListener('click', () => {
+    clearError(addItemError);
+
+    let forPerson = itemForInput.value.trim();
+
+    if (!forPerson) {
+      if (document.body.classList.contains('equal-mode')) {
+        forPerson = 'all'; // field is hidden in Equal Pay mode — doesn't matter who
+      } else {
+        showError(addItemError, 'Please enter who pays for these items (or type "all").');
+        return;
+      }
+    }
+
+    // Auto-lowercase check for "all"
+    if (forPerson.toLowerCase() === 'all') {
+      forPerson = 'all';
+    } else if (forPerson.includes(',')) {
+      // Normalize a comma-separated group: trim each name, drop empties,
+      // and store consistently so calculation logic can split it reliably.
+      const names = forPerson.split(',').map(n => n.trim()).filter(Boolean);
+      if (names.length < 2) {
+        showError(addItemError, 'Please enter at least two names separated by a comma, or a single name.');
+        return;
+      }
+      forPerson = names.join(', ');
+    }
+
+    const rows = Array.from(itemRowsContainer.querySelectorAll('.item-row'));
+    const validRows = [];
+
+    for (const row of rows) {
+      const nameInput = row.querySelector('.row-item-name');
+      const priceInput = row.querySelector('.row-item-price');
+      const name = nameInput.value.trim();
+      const priceRaw = priceInput.value.trim();
+
+      // Skip fully empty rows silently (lets people leave extra blank rows around)
+      if (!name && !priceRaw) continue;
+
+      if (!name) {
+        showError(addItemError, 'One of your item rows is missing a name.');
+        return;
+      }
+      const price = parseFloat(priceRaw);
+      if (priceRaw === '' || isNaN(price) || price <= 0) {
+        showError(addItemError, `Please enter a valid price for "${name}".`);
+        return;
+      }
+
+      validRows.push({ name, price });
+    }
+
+    if (validRows.length === 0) {
+      showError(addItemError, 'Please add at least one item with a name and price.');
+      return;
+    }
+
+    validRows.forEach(r => {
+      items.push({
+        id: itemIdCounter++,
+        name: r.name,
+        price: r.price,
+        forPerson: forPerson
+      });
+    });
+
+    // Reset the form: clear "who pays" and collapse back down to a single empty row
+    itemForInput.value = '';
+    itemRowsContainer.innerHTML = '';
+    const freshRow = createItemRow();
+    freshRow.querySelector('.row-item-name').focus();
+
+    renderItemList();
+  });
+
+  // ============================================================
+  // SCAN ITEM FEATURE (barcode first, OCR photo fallback)
+  // Writes only to whichever row's name input triggered the scan
+  // (activeNameInput). Never touches price or "who pays" fields,
+  // and never auto-submits the Add Item form.
+  // ============================================================
+  const scanModal = document.getElementById('scanModal');
+  const closeScanBtn = document.getElementById('closeScanBtn');
+  const scanVideo = document.getElementById('scanVideo');
+  const scanCanvas = document.getElementById('scanCanvas');
+  const scanStatus = document.getElementById('scanStatus');
+  const capturePhotoBtn = document.getElementById('capturePhotoBtn');
+  const scanSupportHint = document.getElementById('scanSupportHint');
+  const ocrModeHint = document.getElementById('ocrModeHint');
+
+  let scanStream = null;
+  let barcodeDetectorLoop = null;
+  let barcodeDetector = null;
+  let activeNameInput = null; // the specific row's name field currently being filled by the scanner
+
+  // Tracks connectivity so we know whether to attempt Cloud Vision at all.
+  // navigator.onLine flips instantly on wifi/data toggle — no need to wait
+  // for a failed request first.
+  let isOnline = navigator.onLine;
+  window.addEventListener('online', () => { isOnline = true; updateOcrModeHint(); });
+  window.addEventListener('offline', () => { isOnline = false; updateOcrModeHint(); });
+
+  function updateOcrModeHint() {
+    if (!ocrModeHint) return;
+    ocrModeHint.textContent = (USE_CLOUD_VISION && isOnline)
+      ? '📶 Online — using Cloud Vision for label reading'
+      : '📴 Offline — using on-device OCR (Tesseract)';
+  }
+
+  function setScanStatus(msg) {
+    scanStatus.textContent = msg;
+  }
+
+  async function openScanModal(targetNameInput) {
+    activeNameInput = targetNameInput;
+    scanModal.style.display = 'flex';
+    setScanStatus('Starting camera…');
+    capturePhotoBtn.innerHTML = '📸 Capture Label Photo Instead';
+    updateOcrModeHint();
+
+    try {
+      scanStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'environment',
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        }
+      });
+      scanVideo.srcObject = scanStream;
+    } catch (err) {
+      setScanStatus('Camera access denied or unavailable. You can close this and type the item name manually.');
+      return;
+    }
+
+    // Try native barcode detection if the browser supports it (mainly Chrome/Android).
+    if ('BarcodeDetector' in window) {
+      try {
+        barcodeDetector = new BarcodeDetector({
+          formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39']
+        });
+        setScanStatus('Point your camera at the barcode…');
+        startBarcodeLoop();
+      } catch (err) {
+        setScanStatus('Barcode scanning unavailable here — use "Capture Label Photo Instead" below, or just type the name.');
+      }
+    } else {
+      setScanStatus('Barcode scanning isn\'t supported on this browser/device — use "Capture Label Photo Instead" below, or just type the name.');
+    }
+  }
+
+  function startBarcodeLoop() {
+    barcodeDetectorLoop = setInterval(async () => {
+      if (!scanVideo.videoWidth) return;
+      try {
+        const barcodes = await barcodeDetector.detect(scanVideo);
+        if (barcodes && barcodes.length > 0) {
+          const code = barcodes[0].rawValue;
+          clearInterval(barcodeDetectorLoop);
+          setScanStatus(`Barcode found: ${code} — looking it up…`);
+          await lookupBarcode(code);
+        }
+      } catch (err) {
+        // Detection glitches are common/transient — ignore and keep trying.
+      }
+    }, 500);
+  }
+
+  async function lookupBarcode(code) {
+    try {
+      const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json`);
+      const data = await res.json();
+
+      if (data.status === 1 && data.product) {
+        const p = data.product;
+        let name = p.product_name || p.generic_name || '';
+        const qty = p.quantity || ''; // e.g. "60 g"
+
+        if (name) {
+          const combined = qty ? `${name} ${qty}` : name;
+          if (activeNameInput) activeNameInput.value = combined.trim();
+          setScanStatus(`Found: ${combined.trim()}. You can edit it before adding.`);
+        } else {
+          setScanStatus('Barcode recognized, but no product name found in the database. Please type the name manually.');
+        }
+      } else {
+        setScanStatus('This barcode isn\'t in the product database. Please type the item name manually.');
+      }
+    } catch (err) {
+      setScanStatus('Couldn\'t look up that barcode (no internet or lookup failed). Please type the item name manually.');
+    }
+
+    setTimeout(closeScanModal, 1800);
+  }
+
+  // Applies grayscale + contrast stretch + binarization + light sharpening
+  // to a canvas in-place. This is the single biggest lever for OCR accuracy —
+  // Tesseract does far better on high-contrast black-on-white than on busy,
+  // glossy, colorful packaging photos.
+  function preprocessForOCR(canvas) {
+    const ctx = canvas.getContext('2d');
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const d = imageData.data;
+    const gray = new Uint8ClampedArray(canvas.width * canvas.height);
+
+    // 1) Grayscale (luminosity method)
+    for (let i = 0, p = 0; i < d.length; i += 4, p++) {
+      gray[p] = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+    }
+
+    // 2) Contrast stretch — find min/max brightness and stretch to full 0-255 range
+    let min = 255, max = 0;
+    for (let p = 0; p < gray.length; p++) {
+      if (gray[p] < min) min = gray[p];
+      if (gray[p] > max) max = gray[p];
+    }
+    const range = Math.max(1, max - min);
+    for (let p = 0; p < gray.length; p++) {
+      gray[p] = Math.round(((gray[p] - min) / range) * 255);
+    }
+
+    // 3) Light unsharp-mask style sharpening (simple 3x3 kernel) to counter camera blur
+    const w = canvas.width, h = canvas.height;
+    const sharpened = new Uint8ClampedArray(gray.length);
+    const kernel = [0, -1, 0, -1, 5, -1, 0, -1, 0];
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        if (x === 0 || y === 0 || x === w - 1 || y === h - 1) {
+          sharpened[y * w + x] = gray[y * w + x];
+          continue;
+        }
+        let sum = 0, k = 0;
+        for (let ky = -1; ky <= 1; ky++) {
+          for (let kx = -1; kx <= 1; kx++) {
+            sum += gray[(y + ky) * w + (x + kx)] * kernel[k++];
+          }
+        }
+        sharpened[y * w + x] = sum;
+      }
+    }
+
+    // 4) Adaptive-ish binarization (simple global threshold based on mean brightness)
+    let sum = 0;
+    for (let p = 0; p < sharpened.length; p++) sum += sharpened[p];
+    const mean = sum / sharpened.length;
+    const threshold = mean * 0.9; // slightly below mean tends to preserve thin text strokes
+
+    for (let i = 0, p = 0; i < d.length; i += 4, p++) {
+      const v = sharpened[p] > threshold ? 255 : 0;
+      d[i] = d[i + 1] = d[i + 2] = v;
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+  }
+
+  function captureFrameToCanvas() {
+    // Capture at up to 2x the video's native resolution (capped) for sharper OCR input
+    const scaleFactor = Math.min(2, 1600 / Math.max(scanVideo.videoWidth, 1));
+    const targetW = Math.round(scanVideo.videoWidth * Math.max(1, scaleFactor));
+    const targetH = Math.round(scanVideo.videoHeight * Math.max(1, scaleFactor));
+
+    scanCanvas.width = targetW;
+    scanCanvas.height = targetH;
+    const ctx = scanCanvas.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(scanVideo, 0, 0, targetW, targetH);
+  }
+
+  // Set to false to skip straight to the local Tesseract OCR (e.g. while
+  // testing before the Netlify function / API key are set up).
+  const USE_CLOUD_VISION = true;
+
+  async function runOCROnCanvas() {
+    setScanStatus('Reading label… enhancing image for better accuracy…');
+
+    // Keep an unprocessed copy — Cloud Vision does better on the original
+    // color photo, while Tesseract does better on the thresholded version.
+    const rawCanvas = document.createElement('canvas');
+    rawCanvas.width = scanCanvas.width;
+    rawCanvas.height = scanCanvas.height;
+    rawCanvas.getContext('2d').drawImage(scanCanvas, 0, 0);
+
+    if (USE_CLOUD_VISION && isOnline) {
+      try {
+        setScanStatus('Reading label… asking Cloud Vision…');
+        const text = await runCloudVisionOCR(rawCanvas);
+        const finalGuess = extractBestGuess(text);
+
+        if (finalGuess) {
+          if (activeNameInput) activeNameInput.value = finalGuess;
+          setScanStatus(`Best guess: "${finalGuess}". Please review and edit before adding.`);
+          setTimeout(closeScanModal, 2200);
+          return;
+        } else {
+          setScanStatus('Couldn\'t confidently read the label.');
+          showRetakeOption();
+          return;
+        }
+      } catch (err) {
+        // Falls through to local Tesseract OCR below — e.g. offline,
+        // function not deployed yet, or Cloud Vision quota/key issue.
+        console.warn('Cloud Vision OCR failed, falling back to Tesseract:', err);
+        setScanStatus('Cloud OCR unavailable — trying local recognition…');
+      }
+    }
+
+    try {
+      if (typeof Tesseract === 'undefined') {
+        setScanStatus('OCR library failed to load (check your internet connection). Please type the item name manually.');
+        showRetakeOption();
+        return;
+      }
+
+      preprocessForOCR(scanCanvas);
+
+      setScanStatus('Reading label… running text recognition…');
+      const { data: { text } } = await Tesseract.recognize(scanCanvas, 'eng');
+
+      const finalGuess = extractBestGuess(text);
+
+      if (finalGuess) {
+        if (activeNameInput) activeNameInput.value = finalGuess;
+        setScanStatus(`Best guess: "${finalGuess}". Please review and edit before adding.`);
+        setTimeout(closeScanModal, 2200);
+      } else {
+        setScanStatus('Couldn\'t confidently read the label.');
+        showRetakeOption();
+      }
+    } catch (err) {
+      setScanStatus('OCR failed on this photo.');
+      showRetakeOption();
+    }
+  }
+
+  // Sends the captured photo to our own Netlify function, which forwards
+  // it to Google Cloud Vision using a server-side API key. Returns the
+  // raw recognized text (same shape Tesseract.recognize gives us).
+  async function runCloudVisionOCR(canvas) {
+    // Cap the JPEG size a bit so the request stays fast over mobile data
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+    const base64Image = dataUrl.split(',')[1];
+
+    // navigator.onLine can be a false positive (e.g. connected to a wifi
+    // router with no real internet), so don't let a hung request stall
+    // the fallback — give up on the cloud call after 8s.
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+    let res;
+    try {
+      res = await fetch('/.netlify/functions/vision-ocr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: base64Image }),
+        signal: controller.signal
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
+
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}));
+      throw new Error(errBody.error || `Cloud Vision request failed (${res.status})`);
+    }
+
+    const { text } = await res.json();
+    return text || '';
+  }
+
+  // Picks the most plausible product-name line and weight pattern out of raw OCR text.
+  function extractBestGuess(text) {
+    // Weight pattern: "60g", "60 g", "1.5kg", "500ml", "1L", etc.
+    const weightMatch = text.match(/(\d+(\.\d+)?)\s?(g|grams|kg|ml|l)\b/i);
+    const weightText = weightMatch ? `${weightMatch[1]}${weightMatch[3].toLowerCase()}` : '';
+
+    const lines = text
+      .split('\n')
+      .map(l => l.trim())
+      .filter(Boolean)
+      // Drop lines that are mostly symbols/numbers/noise rather than words
+      .filter(l => /[a-zA-Z]{3,}/.test(l))
+      .filter(l => l.length <= 40)
+      // Drop lines that are almost entirely non-letter characters (common OCR noise)
+      .filter(l => {
+        const letters = (l.match(/[a-zA-Z]/g) || []).length;
+        return letters / l.length > 0.5;
+      });
+
+    // Prefer the longest plausible line — short 1-2 letter fragments are usually noise
+    const nameGuess = lines.sort((a, b) => b.length - a.length)[0] || '';
+
+    if (nameGuess && weightText) return `${nameGuess} ${weightText}`;
+    if (nameGuess) return nameGuess;
+    if (weightText) return weightText;
+    return '';
+  }
+
+  function showRetakeOption() {
+    capturePhotoBtn.style.display = 'inline-block';
+    capturePhotoBtn.textContent = '';
+    capturePhotoBtn.innerHTML = '📸 Retake Photo';
+  }
+
+  capturePhotoBtn.addEventListener('click', async () => {
+    if (!scanVideo.videoWidth) {
+      setScanStatus('Camera not ready yet — try again in a moment.');
+      return;
+    }
+
+    if (barcodeDetectorLoop) clearInterval(barcodeDetectorLoop);
+
+    captureFrameToCanvas();
+    await runOCROnCanvas();
+  });
+
+  function closeScanModal() {
+    if (barcodeDetectorLoop) clearInterval(barcodeDetectorLoop);
+    if (scanStream) {
+      scanStream.getTracks().forEach(track => track.stop());
+      scanStream = null;
+    }
+    scanModal.style.display = 'none';
+    if (activeNameInput) activeNameInput.focus();
+  }
+
+  closeScanBtn.addEventListener('click', closeScanModal);
+
+  // ============================================================
+  // CARD 2: ITEM LIST (render, edit, delete)
+  // ============================================================
+  function renderItemList() {
+    saveState();
+    itemListContainer.innerHTML = '';
+
+    if (items.length === 0) {
+      itemListContainer.innerHTML = '<p class="empty-list-msg">No items yet. Add one above <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></p>';
+      return;
+    }
+
+    // Group items by their forPerson value, preserving first-seen order
+    const groups = [];
+    const groupIndexByKey = {};
+    items.forEach(item => {
+      const key = item.forPerson;
+      if (!(key in groupIndexByKey)) {
+        groupIndexByKey[key] = groups.length;
+        groups.push({ key, items: [] });
+      }
+      groups[groupIndexByKey[key]].items.push(item);
+    });
+
+    groups.forEach(group => {
+      const forLabel = group.key === 'all'
+        ? 'All (shared)'
+        : group.key.includes(',')
+          ? `${group.key} (shared)`
+          : group.key;
+
+      const groupTotal = group.items.reduce((sum, i) => sum + i.price, 0);
+
+      const card = document.createElement('div');
+      card.className = 'person-group-card';
+
+      const lines = group.items.map(item => `
+        <div class="person-group-line" data-id="${item.id}">
+          <div class="line-info">
+            <span class="line-name">${escapeHtml(item.name)}</span>
+            <span class="line-price">₱${item.price.toFixed(2)}</span>
+          </div>
+          <div class="line-actions">
+            <button class="icon-btn edit-name-btn" data-id="${item.id}" title="Edit name">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+            <button class="icon-btn edit-price-btn" data-id="${item.id}" title="Edit price">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            </button>
+            <button class="icon-btn delete-btn" data-id="${item.id}" title="Delete">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>
+          </div>
+        </div>
+      `).join('');
+
+      card.innerHTML = `
+        <div class="person-group-header">
+          <span class="person-group-name for-column">${escapeHtml(forLabel)}</span>
+          <span class="person-group-total">₱${groupTotal.toFixed(2)}</span>
+        </div>
+        <div class="person-group-lines">
+          ${lines}
+        </div>
+      `;
+      itemListContainer.appendChild(card);
+    });
+
+    // Attach listeners
+    document.querySelectorAll('.edit-name-btn').forEach(btn => {
+      btn.addEventListener('click', () => editItem(parseInt(btn.dataset.id)));
+    });
+    document.querySelectorAll('.edit-price-btn').forEach(btn => {
+      btn.addEventListener('click', () => editPrice(parseInt(btn.dataset.id)));
+    });
+    document.querySelectorAll('.delete-btn').forEach(btn => {
+      btn.addEventListener('click', () => deleteItem(parseInt(btn.dataset.id)));
+    });
+  }
+
+  function editItem(id) {
+    const item = items.find(i => i.id === id);
+    if (!item) return;
+
+    const newName = prompt('Edit item name:', item.name);
+    if (newName === null) return;
+    const trimmedName = newName.trim();
+    if (!trimmedName) {
+      alert('Item name cannot be empty.');
+      return;
+    }
+
+    const newFor = prompt('Edit "who pays for this?" (type "all" to share):', item.forPerson);
+    if (newFor === null) return;
+    const trimmedFor = newFor.trim();
+    if (!trimmedFor) {
+      alert('This field cannot be empty.');
+      return;
+    }
+
+    item.name = trimmedName;
+    item.forPerson = trimmedFor.toLowerCase() === 'all' ? 'all' : trimmedFor;
+    renderItemList();
+  }
+
+  function editPrice(id) {
+    const item = items.find(i => i.id === id);
+    if (!item) return;
+
+    const newPriceRaw = prompt('Edit price:', item.price);
+    if (newPriceRaw === null) return;
+    const newPrice = parseFloat(newPriceRaw);
+    if (isNaN(newPrice) || newPrice <= 0) {
+      alert('Please enter a valid price greater than 0.');
+      return;
+    }
+
+    item.price = newPrice;
+    renderItemList();
+  }
+
+  function deleteItem(id) {
+    items = items.filter(i => i.id !== id);
+    renderItemList();
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  // ============================================================
+  // CARD 3: SPLIT TYPE TOGGLE
+  // ============================================================
+  const radioEqual = document.getElementById('radioEqual');
+  const radioOrdered = document.getElementById('radioOrdered');
+  const equalForm = document.getElementById('equalForm');
+  const orderedForm = document.getElementById('orderedForm');
+
+  radioEqual.addEventListener('change', () => {
+    if (radioEqual.checked) {
+      equalForm.classList.add('active');
+      orderedForm.classList.remove('active');
+      document.body.classList.add('equal-mode'); // hides "For" column — equal pay doesn't care who
+      saveState();
+    }
+  });
+  radioOrdered.addEventListener('change', () => {
+    if (radioOrdered.checked) {
+      orderedForm.classList.add('active');
+      equalForm.classList.remove('active');
+      document.body.classList.remove('equal-mode'); // v1.5 needs "For" column visible
+      saveState();
+    }
+  });
+
+  // Set initial state on page load (Equal Pay is checked by default)
+  if (radioEqual.checked) {
+    document.body.classList.add('equal-mode');
+  }
+
+  // ============================================================
+  // v1 — EQUAL PAY LOGIC (UNCHANGED)
+  // ============================================================
+  const numPeopleInput = document.getElementById('numPeople');
+  const increasePeopleBtn = document.getElementById('increasePeople');
+  const decreasePeopleBtn = document.getElementById('decreasePeople');
+  const calculateEqualBtn = document.getElementById('calculateEqualBtn');
+  const resetEqualBtn = document.getElementById('resetEqualBtn');
+  const equalError = document.getElementById('equalError');
+  const equalSummary = document.getElementById('equalSummary');
+
+  increasePeopleBtn.addEventListener('click', () => {
+    let val = parseInt(numPeopleInput.value) || 1;
+    if (val < 50) val++;
+    numPeopleInput.value = val;
+    saveState();
+  });
+
+  decreasePeopleBtn.addEventListener('click', () => {
+    let val = parseInt(numPeopleInput.value) || 1;
+    if (val > 1) val--;
+    numPeopleInput.value = val;
+    saveState();
+  });
+
+  calculateEqualBtn.addEventListener('click', () => {
+    clearError(equalError);
+
+    if (items.length === 0) {
+      showError(equalError, 'Please add at least one item before calculating.');
+      equalSummary.style.display = 'none';
+      return;
+    }
+
+    const numPeople = parseInt(numPeopleInput.value);
+    if (!numPeople || numPeople < 1) {
+      showError(equalError, 'Please enter a valid number of people.');
+      equalSummary.style.display = 'none';
+      return;
+    }
+
+    const totalBill = items.reduce((sum, item) => sum + item.price, 0);
+    const eachPays = Math.floor((totalBill / numPeople) * 100) / 100; // floor to 2 decimals
+    const remainder = Math.round((totalBill - (eachPays * numPeople)) * 100) / 100;
+
+    document.getElementById('eqTotalBill').textContent = `₱${totalBill.toFixed(2)}`;
+    document.getElementById('eqNumPeople').textContent = numPeople;
+    document.getElementById('eqEachPays').textContent = `₱${eachPays.toFixed(2)}`;
+    document.getElementById('eqRemainder').textContent = `₱${remainder.toFixed(2)}`;
+
+    equalSummary.style.display = 'grid';
+  });
+
+  resetEqualBtn.addEventListener('click', () => {
+    resetEverything();
+  });
+
+  // ============================================================
+  // v1.5 — PAY WHAT YOU ORDERED LOGIC (NEW)
+  // ============================================================
+  const paidByInput = document.getElementById('paidBy');
+  const calculateOrderedBtn = document.getElementById('calculateOrderedBtn');
+  const resetOrderedBtn = document.getElementById('resetOrderedBtn');
+  const orderedError = document.getElementById('orderedError');
+  const orderedSummary = document.getElementById('orderedSummary');
+  const owedListEl = document.getElementById('owedList');
+
+  paidByInput.addEventListener('input', saveState);
+
+  // Helper: parses an item's forPerson value into a normalized shape.
+  // Returns { type: 'all' } | { type: 'group', names: ['rg','ragie'] } | { type: 'single', name: 'rg' }
+  function parseForPerson(forPerson) {
+    if (forPerson === 'all') return { type: 'all' };
+    if (forPerson.includes(',')) {
+      const names = forPerson.split(',').map(n => n.trim().toLowerCase()).filter(Boolean);
+      return { type: 'group', names };
+    }
+    return { type: 'single', name: forPerson.toLowerCase() };
+  }
+
+  calculateOrderedBtn.addEventListener('click', () => {
+    clearError(orderedError);
+    owedListEl.innerHTML = '';
+    orderedSummary.style.display = 'none';
+
+    if (items.length === 0) {
+      showError(orderedError, 'Please add at least one item before calculating.');
+      return;
+    }
+
+    let paidBy = paidByInput.value.trim();
+    if (!paidBy) {
+      showError(orderedError, 'Please enter who paid the total bill.');
+      return;
+    }
+
+    // Reject "all" as a payer — only one person can pay the total bill
+    if (paidBy.toLowerCase() === 'all') {
+      showError(orderedError, 'You can\'t type "all" as the payer. Only one specific person can pay the total bill.');
+      return;
+    }
+    if (paidBy.includes(',')) {
+      showError(orderedError, 'Only one specific person can be the payer — please enter a single name, not a group.');
+      return;
+    }
+
+    // Build the set of all known individual names from the item list
+    // (names that appear as a specific single payer, or inside a comma-separated group —
+    // excluding the literal "all")
+    const knownNames = new Set();
+    const displayNameMap = {}; // nameLower -> a nicely-cased display version seen in the list
+    items.forEach(item => {
+      const parsed = parseForPerson(item.forPerson);
+      if (parsed.type === 'single') {
+        knownNames.add(parsed.name);
+        if (!displayNameMap[parsed.name]) displayNameMap[parsed.name] = item.forPerson;
+      } else if (parsed.type === 'group') {
+        // Recover original-cased names by re-splitting the raw string (not lowercased)
+        const originalNames = item.forPerson.split(',').map(n => n.trim());
+        originalNames.forEach(n => {
+          const nl = n.toLowerCase();
+          knownNames.add(nl);
+          if (!displayNameMap[nl]) displayNameMap[nl] = n;
+        });
+      }
+    });
+
+    const paidByLower = paidBy.toLowerCase();
+
+    // The payer must exist somewhere in the item list as a specific individual
+    // (either as a single payer or inside a group), OR the group must have at
+    // least one "all" item (meaning payer is part of the shared group).
+    const hasAllItems = items.some(item => item.forPerson === 'all');
+    const payerIsKnownIndividual = knownNames.has(paidByLower);
+
+    if (!payerIsKnownIndividual && !hasAllItems) {
+      showError(orderedError, `"${paidBy}" doesn't match anyone in the item list. Please check the spelling, or add an item for them first.`);
+      return;
+    }
+
+    // Normalize payer's display name to match casing used in the list if possible
+    let payerDisplayName = displayNameMap[paidByLower] || paidBy;
+
+    // Gather the full list of individual names involved for "all" splitting:
+    // everyone who has a specific item (single or group), PLUS the payer themself
+    // if not already listed (since the payer must be part of the group even if
+    // they only appear via "all" items).
+    const allIndividualNames = new Set(knownNames);
+    allIndividualNames.add(paidByLower);
+
+    const groupForAllSplit = Array.from(allIndividualNames);
+    const groupSize = groupForAllSplit.length;
+
+    if (hasAllItems && groupSize === 0) {
+      showError(orderedError, 'Not enough information to split "all" items — please add individual items too, or make sure names are consistent.');
+      return;
+    }
+
+    // Calculate total bill
+    const totalBill = items.reduce((sum, item) => sum + item.price, 0);
+
+    // Calculate what each individual person owes in total
+    // owesMap: name(lowercase) -> { displayName, individualTotal, sharedTotal, total }
+    const owesMap = {};
+    function ensurePerson(nameLower, displayName) {
+      if (!owesMap[nameLower]) {
+        owesMap[nameLower] = { displayName: displayName, individualTotal: 0, sharedTotal: 0 };
+      }
+    }
+
+    // Single-person items — same math as before, untouched
+    items.forEach(item => {
+      const parsed = parseForPerson(item.forPerson);
+      if (parsed.type === 'single') {
+        ensurePerson(parsed.name, displayNameMap[parsed.name] || item.forPerson);
+        owesMap[parsed.name].individualTotal += item.price;
+      }
+    });
+
+    // Custom-group items (e.g. "RG, Ragie") — split evenly among just those named people
+    items.forEach(item => {
+      const parsed = parseForPerson(item.forPerson);
+      if (parsed.type === 'group') {
+        const share = item.price / parsed.names.length;
+        parsed.names.forEach(nameLower => {
+          ensurePerson(nameLower, displayNameMap[nameLower] || nameLower);
+          owesMap[nameLower].individualTotal += share;
+        });
+      }
+    });
+
+    // Make sure payer is represented even if they have no individual items
+    ensurePerson(paidByLower, payerDisplayName);
+
+    // Shared ("all") items — split evenly among groupForAllSplit (unchanged math)
+    const sharedItems = items.filter(item => item.forPerson === 'all');
+    if (sharedItems.length > 0 && groupSize > 0) {
+      const sharedTotalAmount = sharedItems.reduce((sum, item) => sum + item.price, 0);
+      const perPersonShare = sharedTotalAmount / groupSize;
+
+      groupForAllSplit.forEach(nameLower => {
+        // Find a nice display name: prefer existing entries, fallback to the raw name
+        const displayName = owesMap[nameLower] ? owesMap[nameLower].displayName : nameLower;
+        ensurePerson(nameLower, displayName);
+        owesMap[nameLower].sharedTotal += perPersonShare;
+      });
+    }
+
+    // Build final list of who owes what to the payer
+    const owedEntries = Object.keys(owesMap).map(nameLower => {
+      const person = owesMap[nameLower];
+      const total = Math.round((person.individualTotal + person.sharedTotal) * 100) / 100;
+      return {
+        nameLower,
+        displayName: person.displayName,
+        individualTotal: Math.round(person.individualTotal * 100) / 100,
+        sharedTotal: Math.round(person.sharedTotal * 100) / 100,
+        total,
+        isPayer: nameLower === paidByLower
+      };
+    });
+
+    // Render summary
+    document.getElementById('ordTotalBill').textContent = `₱${totalBill.toFixed(2)}`;
+    document.getElementById('ordPaidBy').textContent = payerDisplayName;
+    document.getElementById('ordNumPeople').textContent = owedEntries.length;
+    orderedSummary.style.display = 'grid';
+
+    // Render owed list — payer first, showing what they collect; others show what they owe
+    owedListEl.innerHTML = '';
+
+    // Sort so payer shows first
+    owedEntries.sort((a, b) => (b.isPayer ? 1 : 0) - (a.isPayer ? 1 : 0));
+
+    owedEntries.forEach(entry => {
+      const div = document.createElement('div');
+      div.className = 'owed-item' + (entry.isPayer ? ' payer' : '');
+
+      if (entry.isPayer) {
+        const totalCollected = owedEntries
+          .filter(e => !e.isPayer)
+          .reduce((sum, e) => sum + e.total, 0);
+        div.innerHTML = `
+          <div>
+            <strong>${escapeHtml(entry.displayName)}</strong> paid the total bill
+            <span class="breakdown">Own share: ₱${entry.total.toFixed(2)} · Collects from others: ₱${totalCollected.toFixed(2)}</span>
+          </div>
+          <div class="amount">₱${totalBill.toFixed(2)} paid</div>
+        `;
+      } else {
+        let breakdown = [];
+        if (entry.individualTotal > 0) breakdown.push(`₱${entry.individualTotal.toFixed(2)} own item(s)`);
+        if (entry.sharedTotal > 0) breakdown.push(`₱${entry.sharedTotal.toFixed(2)} shared`);
+        div.innerHTML = `
+          <div>
+            <strong>${escapeHtml(entry.displayName)}</strong> owes ${escapeHtml(payerDisplayName)}
+            <span class="breakdown">${breakdown.join(' + ') || 'No charges'}</span>
+          </div>
+          <div class="amount">₱${entry.total.toFixed(2)}</div>
+        `;
+      }
+      owedListEl.appendChild(div);
+    });
+  });
+
+  resetOrderedBtn.addEventListener('click', () => {
+    resetEverything();
+  });
+
+  // ============================================================
+  // RESET EVERYTHING (shared by both forms)
+  // ============================================================
+  function resetEverything() {
+    items = [];
+    renderItemList();
+
+    itemForInput.value = '';
+    itemRowsContainer.innerHTML = '';
+    createItemRow();
+    clearError(addItemError);
+
+    numPeopleInput.value = 4;
+    clearError(equalError);
+    equalSummary.style.display = 'none';
+
+    paidByInput.value = '';
+    clearError(orderedError);
+    orderedSummary.style.display = 'none';
+    owedListEl.innerHTML = '';
+
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (err) {
+      // Ignore if localStorage is unavailable — nothing critical depends on this succeeding.
+    }
+  }
+
+  // Restore any previously saved session (items, split type, people count, payer)
+  // before the first render, so accidental tab closes/refreshes don't lose data.
+  loadState();
+
+  // Initial render
+  renderItemList();
+  // Register the dedicated Service Worker file
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then(reg => console.log('Service Worker Registered Successfully!'))
+          .catch(err => console.log('Service Worker Failed:', err));
+      });
+    }
+</script>
+</body>
+</html>
