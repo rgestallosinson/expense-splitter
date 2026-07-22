@@ -1132,17 +1132,14 @@
     }
 
     const maxHeight = Math.max(...measured.map(w => w.height));
-    // Keep words close to the largest font size on the label — this is
-    // usually the brand/product name, sometimes spanning 2-3 words or lines.
-    const bigWords = measured.filter(w => w.height >= maxHeight * 0.7);
 
-    // Group big words into lines by vertical position (words on the same
-    // printed line will have similar yCenter), then order each line left-to-right.
-    const avgHeight = bigWords.reduce((sum, w) => sum + w.height, 0) / bigWords.length;
-    const lineTolerance = avgHeight * 0.6;
+    // Group ALL words into lines by vertical position first (not just the
+    // "big" ones) so we can compare each line's average font size fairly.
+    const overallAvgHeight = measured.reduce((sum, w) => sum + w.height, 0) / measured.length;
+    const lineTolerance = overallAvgHeight * 0.6;
 
     const lines = [];
-    bigWords
+    measured
       .sort((a, b) => a.yCenter - b.yCenter)
       .forEach(w => {
         let line = lines.find(l => Math.abs(l.yCenter - w.yCenter) <= lineTolerance);
@@ -1151,12 +1148,25 @@
           lines.push(line);
         }
         line.words.push(w);
+        // Keep the line's yCenter updated to the running average so nearby
+        // words in the same visual row keep grouping correctly.
+        line.yCenter = line.words.reduce((s, x) => s + x.yCenter, 0) / line.words.length;
       });
 
-    const nameGuess = lines
-      .map(line => line.words.sort((a, b) => a.xCenter - b.xCenter).map(w => w.text).join(' '))
-      .join(' ')
-      .trim();
+    // Pick the ONE line with the largest average font size — this is almost
+    // always the product/brand name. Taking a single line (rather than every
+    // line near maxHeight) avoids accidentally gluing a same-size subtitle
+    // ("MEN", "48H", etc.) onto the actual name.
+    const bestLine = lines
+      .map(line => ({
+        ...line,
+        avgHeight: line.words.reduce((s, w) => s + w.height, 0) / line.words.length
+      }))
+      .sort((a, b) => b.avgHeight - a.avgHeight)[0];
+
+    const nameGuess = bestLine
+      ? bestLine.words.sort((a, b) => a.xCenter - b.xCenter).map(w => w.text).join(' ').trim()
+      : '';
 
     if (nameGuess && weightText) return `${nameGuess} ${weightText}`;
     if (nameGuess) return nameGuess;
