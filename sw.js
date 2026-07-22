@@ -1,4 +1,4 @@
-const CACHE_NAME = 'expense-splitter-v1.6';
+const CACHE_NAME = 'expense-splitter-v1.7';
 const ASSETS = [
   './',
   './index.html'
@@ -14,9 +14,18 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// Activate: Take control immediately
+// Activate: Take control immediately, and clean out old cache versions so
+// stale files (old JS/HTML) can never be served after an update.
 self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames
+          .filter((name) => name !== CACHE_NAME)
+          .map((name) => caches.delete(name))
+      );
+    }).then(() => self.clients.claim())
+  );
 });
 
 // Fetch: Serve from Cache when offline
