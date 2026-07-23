@@ -1,7 +1,10 @@
-const CACHE_NAME = 'expense-splitter-v1.7';
+const CACHE_NAME = 'expense-splitter-v1.8';
 const ASSETS = [
   './',
-  './index.html'
+  './index.html',
+  './manifest.json',
+  './icons/icon-192.png',
+  './icons/icon-512.png'
 ];
 
 // Install: Cache essential files
