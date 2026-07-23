@@ -454,7 +454,7 @@
 <div class="wrap">
   <header>
     <h1 style="color:#0a2472; font-weight:900;"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-5px; margin-right:6px;"><path d="M16 3h5v5"/><path d="M8 3H3v5"/><path d="M12 22v-8.3a4 4 0 0 0-1.172-2.872L3 3"/><path d="m15 9 6-6"/></svg>Expense Splitter</h1>
-    <p>Split fairly, no manual math.</p>
+    <p>v1 Equal Pay + v1.5 Pay-What-You-Ordered — split fairly, no manual math.</p>
     <p style="font-size:0.8rem; margin-top:2px;">by <span style="color:#00c853; font-weight:900;">RG Sinson</span></p>
   </header>
 
@@ -479,7 +479,7 @@
         </div>
         <div style="display:flex; align-items:center; gap:8px; margin:6px 0; color:var(--muted); font-size:0.72rem;">
           <div style="flex:1; height:1px; background:var(--border);"></div>
-          <span>OR say item + price together using voice speech</span>
+          <span>OR say item + price together</span>
           <div style="flex:1; height:1px; background:var(--border);"></div>
         </div>
         <div style="display:flex; gap:8px; margin-top:8px;">
@@ -934,7 +934,7 @@
   let barcodeDetector = null;
   let activeNameInput = null; // the specific row's name field currently being filled by the scanner
 
-  // Tracks connectivity so we know whether to attempt Cloud Vision at all.
+  // Tracks connectivity so we know whether to attempt cloud OCR at all.
   // navigator.onLine flips instantly on wifi/data toggle — no need to wait
   // for a failed request first.
   let isOnline = navigator.onLine;
@@ -944,7 +944,7 @@
   function updateOcrModeHint() {
     if (!ocrModeHint) return;
     ocrModeHint.textContent = (USE_CLOUD_VISION && isOnline)
-      ? '📶 Online — using Cloud Vision for label reading'
+      ? '📶 Online — using Cloud OCR for label reading'
       : '📴 Offline — using on-device OCR (Tesseract)';
   }
 
@@ -1114,7 +1114,7 @@
   async function runOCROnCanvas() {
     setScanStatus('Reading label… enhancing image for better accuracy…');
 
-    // Keep an unprocessed copy — Cloud Vision does better on the original
+    // Keep an unprocessed copy — cloud OCR does better on the original
     // color photo, while Tesseract does better on the thresholded version.
     const rawCanvas = document.createElement('canvas');
     rawCanvas.width = scanCanvas.width;
@@ -1123,13 +1123,13 @@
 
     if (USE_CLOUD_VISION && isOnline) {
       try {
-        setScanStatus('Reading label… asking Cloud Vision…');
+        setScanStatus('Reading label… asking Cloud OCR…');
         const { text, words } = await runCloudVisionOCR(rawCanvas);
         const finalGuess = extractBestGuessFromWords(words, text);
 
         if (finalGuess) {
           if (activeNameInput) activeNameInput.value = finalGuess;
-          setScanStatus(`Best guess (Cloud Vision): "${finalGuess}". Please review and edit before adding.`);
+          setScanStatus(`Best guess (Cloud OCR): "${finalGuess}". Please review and edit before adding.`);
           setTimeout(closeScanModal, 2200);
           return;
         } else {
@@ -1139,8 +1139,8 @@
         }
       } catch (err) {
         // Falls through to local Tesseract OCR below — e.g. offline,
-        // function not deployed yet, or Cloud Vision quota/key issue.
-        console.warn('Cloud Vision OCR failed, falling back to Tesseract:', err);
+        // function not deployed yet, or OCR.space quota/key issue.
+        console.warn('Cloud OCR failed, falling back to Tesseract:', err);
         setScanStatus('Cloud OCR unavailable (' + (err.message || 'error') + ') — trying local recognition…');
       }
     }
@@ -1174,7 +1174,7 @@
   }
 
   // Sends the captured photo to our own Netlify function, which forwards
-  // it to Google Cloud Vision using a server-side API key. Returns the
+  // it to OCR.space using a server-side API key. Returns the
   // raw recognized text (same shape Tesseract.recognize gives us).
   async function runCloudVisionOCR(canvas) {
     // Cap the JPEG size a bit so the request stays fast over mobile data
@@ -1201,7 +1201,7 @@
 
     if (!res.ok) {
       const errBody = await res.json().catch(() => ({}));
-      throw new Error(errBody.error || `Cloud Vision request failed (${res.status})`);
+      throw new Error(errBody.error || `Cloud OCR request failed (${res.status})`);
     }
 
     const { text, words } = await res.json();
@@ -1209,7 +1209,7 @@
   }
 
   // Picks the most plausible product-name line and weight pattern out of raw OCR text.
-  // Cloud Vision gives us a bounding box for every individual word, which means
+  // The OCR service gives us a bounding box for every individual word, which means
   // we know roughly how big each word's font is. On real packaging, the product
   // name is almost always printed in the largest text on the label — much more
   // reliable than "longest line," which just as easily grabs a slogan or the

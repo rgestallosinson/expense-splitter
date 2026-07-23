@@ -1,19 +1,25 @@
 // netlify/functions/vision-ocr.js
 //
-// Proxies label photos to Google Cloud Vision so the API key never
-// touches the browser. Deployed automatically by Netlify from this
-// folder — no separate backend/server needed.
+// Proxies label photos to OCR.space so the API key never touches the
+// browser. Deployed automatically by Netlify from this folder — no
+// separate backend/server needed.
+//
+// Switched from Google Cloud Vision to OCR.space because Cloud Vision
+// requires a linked billing account even for free-tier usage. OCR.space's
+// free tier needs only an API key (no card), and its "overlay" mode still
+// gives us per-word bounding boxes — so the front-end's "pick the biggest
+// text on the label" logic keeps working unchanged.
 
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: JSON.stringify({ error: 'Method not allowed' }) };
   }
 
-  const apiKey = process.env.GOOGLE_VISION_API_KEY;
+  const apiKey = process.env.OCR_SPACE_API_KEY;
   if (!apiKey) {
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: 'Server missing GOOGLE_VISION_API_KEY env var' })
+      body: JSON.stringify({ error: 'Server missing OCR_SPACE_API_KEY env var' })
     };
   }
 
@@ -27,41 +33,51 @@ exports.handler = async (event) => {
   }
 
   try {
-    const visionRes = await fetch(
-      `https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          requests: [
-            {
-              image: { content: base64Image },
-              features: [{ type: 'TEXT_DETECTION', maxResults: 1 }]
-            }
-          ]
-        })
-      }
-    );
+    const params = new URLSearchParams();
+    params.append('apikey', apiKey);
+    params.append('base64Image', `data:image/jpeg;base64,${base64Image}`);
+    params.append('OCREngine', '2');        // engine 2 = better accuracy on packaging/labels
+    params.append('isOverlayRequired', 'true'); // gives us per-word bounding boxes
+    params.append('scale', 'true');
+    params.append('detectOrientation', 'true');
 
-    const data = await visionRes.json();
+    const ocrRes = await fetch('https://api.ocr.space/parse/image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString()
+    });
 
-    if (!visionRes.ok) {
-      const message = data?.error?.message || 'Cloud Vision request failed';
-      return { statusCode: visionRes.status, body: JSON.stringify({ error: message }) };
+    const data = await ocrRes.json();
+
+    if (!ocrRes.ok || data.IsErroredOnProcessing) {
+      const message = Array.isArray(data.ErrorMessage)
+        ? data.ErrorMessage.join(', ')
+        : (data.ErrorMessage || 'OCR.space request failed');
+      return { statusCode: ocrRes.status || 500, body: JSON.stringify({ error: message }) };
     }
 
-    const text = data?.responses?.[0]?.fullTextAnnotation?.text || '';
+    const parsedResult = data?.ParsedResults?.[0];
+    const text = parsedResult?.ParsedText || '';
 
-    // textAnnotations[0] is the full block of text (same as fullTextAnnotation.text);
-    // everything after that is one entry per detected word, each with its own
-    // bounding box. We pass these along so the front-end can tell which words
-    // are printed in the biggest font — on real packaging that's almost always
-    // the product name, regardless of how much other (smaller) text surrounds it.
-    const rawAnnotations = data?.responses?.[0]?.textAnnotations || [];
-    const words = rawAnnotations.slice(1).map((w) => ({
-      text: w.description,
-      vertices: w.boundingPoly?.vertices || []
-    }));
+    // Flatten OCR.space's per-line word boxes into the same { text, vertices }
+    // shape the front-end already expects (4 corner points per word), so its
+    // "largest font on the label" logic doesn't need to change at all.
+    const words = [];
+    const lines = parsedResult?.TextOverlay?.Lines || [];
+    lines.forEach((line) => {
+      (line.Words || []).forEach((w) => {
+        const left = w.Left, top = w.Top, width = w.Width, height = w.Height;
+        words.push({
+          text: w.WordText,
+          vertices: [
+            { x: left, y: top },
+            { x: left + width, y: top },
+            { x: left + width, y: top + height },
+            { x: left, y: top + height }
+          ]
+        });
+      });
+    });
 
     return {
       statusCode: 200,
