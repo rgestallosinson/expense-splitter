@@ -1018,7 +1018,7 @@
 
         if (finalGuess) {
           if (activeNameInput) activeNameInput.value = finalGuess;
-          setScanStatus(`Best guess: "${finalGuess}". Please review and edit before adding.`);
+          setScanStatus(`Best guess (Cloud Vision): "${finalGuess}". Please review and edit before adding.`);
           setTimeout(closeScanModal, 2200);
           return;
         } else {
@@ -1030,7 +1030,7 @@
         // Falls through to local Tesseract OCR below — e.g. offline,
         // function not deployed yet, or Cloud Vision quota/key issue.
         console.warn('Cloud Vision OCR failed, falling back to Tesseract:', err);
-        setScanStatus('Cloud OCR unavailable — trying local recognition…');
+        setScanStatus('Cloud OCR unavailable (' + (err.message || 'error') + ') — trying local recognition…');
       }
     }
 
@@ -1050,7 +1050,7 @@
 
       if (finalGuess) {
         if (activeNameInput) activeNameInput.value = finalGuess;
-        setScanStatus(`Best guess: "${finalGuess}". Please review and edit before adding.`);
+        setScanStatus(`Best guess (offline OCR): "${finalGuess}". Please review and edit before adding.`);
         setTimeout(closeScanModal, 2200);
       } else {
         setScanStatus('Couldn\'t confidently read the label.');
