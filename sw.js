@@ -1,4 +1,4 @@
-const CACHE_NAME = 'expense-splitter-v1.9';
+const CACHE_NAME = 'expense-splitter-v2.0';
 const ASSETS = [
   './',
   './index.html',
