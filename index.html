@@ -472,7 +472,11 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px; margin-right:5px;"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>Scan
           </button>
         </div>
-        <input type="number" class="row-item-price" placeholder="Price (₱)" min="0" step="0.01" style="margin-top:8px;">
+        <div style="display:flex; gap:8px; margin-top:8px;">
+          <input type="number" class="row-item-price" placeholder="Price (₱)" min="0" step="0.01" style="flex:1;">
+          <button type="button" class="btn btn-secondary row-voice-btn" style="white-space:nowrap;">🎤 Voice</button>
+        </div>
+        <div class="row-voice-status" style="font-size:0.76rem; color:var(--muted); margin-top:4px; min-height:1em;"></div>
       </div>
     </div>
     <p class="hint" id="scanSupportHint" style="display:none;"></p>
@@ -680,6 +684,82 @@
     el.classList.remove('show');
   }
 
+  // --- Voice input (Web Speech API) --------------------------------------
+  // Built into the browser (Chrome on Android works great; Safari/iOS
+  // doesn't support this yet). No API key, no server call — everything
+  // just talks straight to the browser's own speech recognizer.
+  const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  // Turns something like "Rexona sixty pesos" or "chicken joy 150" into
+  // { name: "Rexona", price: 60 }. Grabs the first number it hears as the
+  // price and treats everything else (minus filler words) as the name.
+  function parseVoicePriceAndName(transcript) {
+    let text = (transcript || '').trim();
+    const numberMatch = text.match(/\d+(?:\.\d{1,2})?/);
+
+    let price = null;
+    let name = text;
+
+    if (numberMatch) {
+      price = parseFloat(numberMatch[0]);
+      name = text.replace(numberMatch[0], '');
+      // Strip common filler words spoken around the price
+      name = name.replace(/\b(pesos?|piso|php|each|for|is|po|lang)\b/gi, '');
+      name = name.replace(/\s{2,}/g, ' ').replace(/^[-,\s]+|[-,\s]+$/g, '').trim();
+    }
+
+    // Light title-casing so it doesn't look like a raw transcript
+    if (name) {
+      name = name.replace(/\w\S*/g, (w) => w.charAt(0).toUpperCase() + w.slice(1));
+    }
+
+    return { name, price };
+  }
+
+  function startVoiceInputForRow(row, voiceBtn, voiceStatus) {
+    const nameInput = row.querySelector('.row-item-name');
+    const priceInput = row.querySelector('.row-item-price');
+
+    const recognition = new SpeechRecognitionCtor();
+    recognition.lang = 'en-PH';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    voiceBtn.disabled = true;
+    voiceBtn.textContent = '🎙️ Listening…';
+    if (voiceStatus) voiceStatus.textContent = 'Say the item and price, e.g. "Rexona sixty pesos".';
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      const { name, price } = parseVoicePriceAndName(transcript);
+
+      if (name) nameInput.value = name;
+      if (price !== null) priceInput.value = price;
+
+      if (voiceStatus) {
+        voiceStatus.textContent = (name || price !== null)
+          ? `Heard: "${transcript}". Please review before adding.`
+          : `Heard: "${transcript}", but couldn't tell name/price apart — please check the fields.`;
+      }
+    };
+
+    recognition.onerror = (event) => {
+      if (voiceStatus) {
+        const reason = event.error === 'not-allowed'
+          ? 'microphone permission was denied'
+          : event.error;
+        voiceStatus.textContent = `Voice input didn't work (${reason}). Please try again or type manually.`;
+      }
+    };
+
+    recognition.onend = () => {
+      voiceBtn.disabled = false;
+      voiceBtn.textContent = '🎤 Voice';
+    };
+
+    recognition.start();
+  }
+
   function createItemRow() {
     const rowId = `row-${rowIdCounter++}`;
     const row = document.createElement('div');
@@ -692,7 +772,11 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px; margin-right:5px;"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>Scan
         </button>
       </div>
-      <input type="number" class="row-item-price" placeholder="Price (₱)" min="0" step="0.01" style="margin-top:8px;">
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <input type="number" class="row-item-price" placeholder="Price (₱)" min="0" step="0.01" style="flex:1;">
+        <button type="button" class="btn btn-secondary row-voice-btn" style="white-space:nowrap;">🎤 Voice</button>
+      </div>
+      <div class="row-voice-status" style="font-size:0.76rem; color:var(--muted); margin-top:4px; min-height:1em;"></div>
       <button type="button" class="btn btn-danger btn-sm row-remove-btn">Remove This Item</button>
     `;
     itemRowsContainer.appendChild(row);
@@ -703,8 +787,20 @@
   function wireRowEvents(row) {
     const scanBtn = row.querySelector('.row-scan-btn');
     const removeBtn = row.querySelector('.row-remove-btn');
+    const voiceBtn = row.querySelector('.row-voice-btn');
+    const voiceStatus = row.querySelector('.row-voice-status');
+
     if (scanBtn) {
       scanBtn.addEventListener('click', () => openScanModal(row.querySelector('.row-item-name')));
+    }
+    if (voiceBtn) {
+      if (!SpeechRecognitionCtor) {
+        // Not supported on this browser (notably Safari/iOS) — hide rather
+        // than show a button that can't do anything.
+        voiceBtn.style.display = 'none';
+      } else {
+        voiceBtn.addEventListener('click', () => startVoiceInputForRow(row, voiceBtn, voiceStatus));
+      }
     }
     if (removeBtn) {
       removeBtn.addEventListener('click', () => {
