@@ -1,7 +1,7 @@
 {
-  "name": "Expense Splitter",
+  "name": "Expense Splitter by RG Sinson",
   "short_name": "Splitter",
-  "description": "Split shared expenses and scan or voice-input item prices",
+  "description": "Split shared expenses and scan or voice-input item prices — by RG Sinson",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
